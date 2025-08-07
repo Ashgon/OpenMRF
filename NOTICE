@@ -1,0 +1,115 @@
+This software repository includes third-party components that are distributed under their respective licenses. The following notices are provided for attribution and legal compliance.
+
+
+-------------------------------------------------------------------------------
+1. Michigan Image Reconstruction Toolbox (MIRT)
+/include_miitt/src_mirt
+
+Original author: Jeffrey A. Fessler (University of Michigan, Ann Arbor, MI, USA)
+Original source: https://web.eecs.umich.edu/~fessler/code/
+License: Custom Academic Use License
+You may freely use and distribute this software as long as you retain the author’s name (Jeffrey A. Fessler).
+Modifications must be renamed before redistribution. This software is provided without warranties.
+Citation:
+Fessler, J. A., & Sutton, B. P. (2003). Nonuniform fast Fourier transforms using min-max interpolation. IEEE Transactions on Signal Processing, 51(2), 560-574
+
+-------------------------------------------------------------------------------
+2. Scientific colour maps
+/include_misc/src_colormaps
+
+Original authors: Miha Fuderer and Fabio Crameri
+Original source: https://doi.org/10.5281/zenodo.8268884 and https://doi.org/10.5281/zenodo.1243862
+License: Creative Commons Attribution 4.0 International 
+The Creative Commons Attribution license allows re-distribution and re-use of a licensed work on the condition that the creator is appropriately credited.
+Citation:
+Fuderer M, Wichtmann B, Crameri F, de Souza NM, Baeßler B, Gulani V, Wang M, Poot D, de Boer R, Cashmore M, Keenan KE, Ma D, Pirkl C, Sollmann N, Weingärtner S, Mandija S, Golay X. Color-map recommendation for MR relaxometry maps. Magn Reson Med. 2025 Feb;93(2):490-506. doi: 10.1002/mrm.30290
+
+-------------------------------------------------------------------------------
+3. Eigen - C++ Template Library
+/include_misc/src_cpp_eigen
+
+Original author: eigen.tuxfamily.org
+Original source: https://github.com/PX4/eigen
+License: Mozilla Public License Version 2.0 (MPL 2.0)
+This software is distributed under the MPL 2.0.
+For full license terms, see: http://mozilla.org/MPL/2.0/
+
+
+-------------------------------------------------------------------------------
+4. ESPIRiT Coil Sensitivity Estimation
+/include_misc/src_espirit
+
+Original author: Michael Lustig (University of California, Berkeley, Berkeley, CA, USA)
+Original source: https://people.eecs.berkeley.edu/~mlustig/Software.html  
+License: Custom UC Berkeley Research License
+Permitted for research, education, and non-profit use only. Commercial use requires a separate license from UC Berkeley. Provided "AS IS" with no warranties.
+Citation:
+Uecker M, Lai P, Murphy MJ, Virtue P, Elad M, Pauly JM, Vasanawala SS, Lustig M. ESPIRiT--an eigenvalue approach to autocalibrating parallel MRI: where SENSE meets GRAPPA. Magn Reson Med. 2014 Mar;71(3):990-1001. doi: 10.1002/mrm.24751
+
+
+-------------------------------------------------------------------------------
+5. mapVBVD - Siemens .dat Reader
+/include_misc/src_mapVBVD
+
+Original author: Philipp Ehses (German Center for Neurodegenerative Diseases, Bonn, Germany)
+Original source: https://github.com/pehses/mapVBVD
+
+
+-------------------------------------------------------------------------------
+6. MRI Phantom Simulation Code
+/include_misc/src_mri_phantom
+
+Original authors: Guerquin-Kern M, Lejeune L, Pruessmann KP, Unser M (EPFL Biomedical Imaging Group, École Polytechnique Fédérale de Lausanne, Switzerland)  
+Original source: https://bigwww.epfl.ch/algorithms/mriphantom/
+Redistribution permitted under the disclaimer:
+“EPFL makes no warranties of any kind on this software and shall in no event be liable for damages of any kind in connection with the use and exploitation of this technology.”
+Citation:
+Guerquin-Kern M, Lejeune L, Pruessmann KP, Unser M. Realistic analytical phantoms for parallel magnetic resonance imaging. IEEE Trans Med Imaging. 2012 Mar;31(3):626-36. doi: 10.1109/TMI.2011.2174158
+
+
+-------------------------------------------------------------------------------
+7. Prediction of PNS in Siemens MRI systems
+/include_misc/src_safe
+
+Original authors: Filip Szczepankiewicz and Thomas Witzel (Medical Radiation Physics Lund University, Sweden; Brigham and Women's Hospital, MA, Boston; Harvard Medical School, MA, Boston; Massachusetts General Hospital, MA, Boston)
+Original source: https://github.com/filip-szczepankiewicz/safe_pns_prediction
+License: BSD 3-Clause License  
+Redistribution and use permitted under the BSD 3-Clause license.
+Citation:
+SAFE-Model - A New Method for Predicting Peripheral Nerve Stimulations in MRI by F.X. Herbank and M. Gebhardt. Abstract No 2007. Proc. Intl. Soc. Mag. Res. Med. 8, 2000, Denver, Colorado, USA
+
+
+-------------------------------------------------------------------------------
+8. Variable-Density Spiral Design Functions
+/include_misc/vds
+
+Original author: Brian Hargreaves (Stanford University, Stanford, CA, USA)  
+Original source: http://mrsrl.stanford.edu/~brian/vdspiral/  
+Citation: 
+Lee JH, Hargreaves BA, Hu BS, Nishimura DG. Fast 3D imaging using variable-density spiral trajectories with applications to limb perfusion. Magn Reson Med. 2003 Dec;50(6):1276-85. doi: 10.1002/mrm.10644
+
+
+-------------------------------------------------------------------------------
+9. Pulseq Framework
+/include_pulseq
+
+Original authors: Kelvin Layton, Maxim Zaitsev (University Medical Center Freiburg, Freiburg, Germany)
+Original source: https://github.com/pulseq/pulseq
+License: MIT License  
+Permission granted to use, copy, modify, and distribute the software under the MIT License.
+Citation:
+Layton KJ, Kroboth S, Jia F, Littin S, Yu H, Leupold J, Nielsen JF, Stöcker T, Zaitsev M. Pulseq: A rapid and hardware-independent pulse sequence prototyping framework. Magn Reson Med. 2017 Apr;77(4):1544-1552. doi: 10.1002/mrm.26235
+
+
+-------------------------------------------------------------------------------
+10. Pulseq Toolbox Readout Modules
+/include_pulseq_toolbox/src_readouts
+
+Custom modules inspired by examples from:
+  - https://pulseq.github.io/writeEpi.html
+  - https://pulseq.github.io/writeFastRadialGradientEcho.html
+  - https://pulseq.github.io/writeTSE.html
+  - https://pulseq.github.io/writeUTE_rs.html
+  - https://github.com/HennigJue/single-shot-spiral-TSE
+Citation:
+Hennig J, Barghoorn A, Zhang S, Zaitsev M. Single shot spiral TSE with annulated segmentation. Magn Reson Med. 2022 Aug;88(2):651-662. doi: 10.1002/mrm.29224
