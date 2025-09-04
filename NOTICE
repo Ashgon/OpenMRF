@@ -80,7 +80,19 @@ SAFE-Model - A New Method for Predicting Peripheral Nerve Stimulations in MRI by
 
 
 -------------------------------------------------------------------------------
-8. Variable-Density Spiral Design Functions
+8. A fast method for designing time-optimal gradient waveforms for arbitrary k-space trajectories
+/include_misc/src_tOptGrad
+
+Original authors: Lustig M, Kim SJ, Pauly JM, Vaziri S (UC Berkeley, Electrical Engineering & Computer Sciences, Berkeley, CA, USA)  
+Original source: https://people.eecs.berkeley.edu/~mlustig/Software.html 
+Citation: 
+Lustig M, Kim SJ, Pauly JM. A fast method for designing time-optimal gradient waveforms for arbitrary k-space trajectories. IEEE Trans Med Imaging. 2008 Jun;27(6):866-73. doi: 10.1109/TMI.2008.922699
+and
+Vaziri S and Lustig M. The Fastest Arbitrary k-space Trajectories. Proc Intl Soc Mag Reson Med. 2012. #2284
+
+
+-------------------------------------------------------------------------------
+9. Variable-Density Spiral Design Functions
 /include_misc/vds
 
 Original author: Brian Hargreaves (Stanford University, Stanford, CA, USA)  
@@ -90,7 +102,7 @@ Lee JH, Hargreaves BA, Hu BS, Nishimura DG. Fast 3D imaging using variable-densi
 
 
 -------------------------------------------------------------------------------
-9. Pulseq Framework
+10. Pulseq Framework
 /include_pulseq
 
 Original authors: Kelvin Layton, Maxim Zaitsev (University Medical Center Freiburg, Freiburg, Germany)
@@ -102,7 +114,7 @@ Layton KJ, Kroboth S, Jia F, Littin S, Yu H, Leupold J, Nielsen JF, Stöcker T, 
 
 
 -------------------------------------------------------------------------------
-10. Pulseq Toolbox Readout Modules
+11. Pulseq Toolbox Readout Modules
 /include_pulseq_toolbox/src_readouts
 
 Custom modules inspired by examples from:
