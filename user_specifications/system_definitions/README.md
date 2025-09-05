@@ -1,4 +1,4 @@
-# Contents: /scanner_definitions
+# Contents: /system_definitions
 
 This folder contains `.csv` files that define hardware specifications of different MRI scanners. These configuration files are used to ensure compliance with scanner-specific constraints during sequence compilation.
 

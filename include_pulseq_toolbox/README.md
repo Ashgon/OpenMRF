@@ -68,17 +68,4 @@ The following repositories were used for the basic EPI, RAD, SPITSE, TSE and UTE
     - https://pulseq.github.io/writeTSE.html, https://pulseq.github.io/writeUTE_rs.html
 
   
-
-- **system_specifications/**
-
-MRI system specifications
-
-  
-
-- **user_definitions/**
-
-User configuration: lab, username, backup paths
-
-  
-
 _Maximilian Gram: 14.07.2025_

@@ -1,5 +1,2 @@
-include_pulseq_toolbox/*.cpp
-include_pulseq_toolbox/*.mexw64
-include_pulseq_toolbox/*.mexa64
 *.asv
 *.asc

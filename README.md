@@ -15,6 +15,7 @@ OpenMRF is a modular and vendor-neutral framework for Magnetic Resonance Fingerp
 - `include_pulseq_toolbox/`: Contains standard imaging readouts (cartesian, radial, spiral, rosette) combined with various preparation modules (inversion recovery, saturation, MLEV-T2, spin-lock, adiabatic spin-lock, CEST). Also includes simulation tools for MRF dictionary generation.
 - `main_sequences/`: Example Pulseq sequences and reconstruction scripts.
 - `projects/`: Collection of projects, which were published or presented on conferences or which are currently work in progress.
+- `user_specifications/`: User specific definitions (automatically generated via install_OpenMRF.m), MRI system specifications (create a .csv file for your system's gradient limits and timings) and optionally your python cmd specifications for SIGPY pulses.
 
 ## System Requirements
 

@@ -1,4 +1,4 @@
-# mgram 11.07.2025
+# Contents: /python_definitions
 
 # Contens:
 functions for generating SLR or adiabatic pulses using the sigpy toolbox.
@@ -10,3 +10,5 @@ unix: env -> '/home/.../miniforge3/bin/activate SIGPY'
 unix: python -> 'python3'
 step 3: copy your env path and python command to the init_SIGPY_windows_unix.m script
 step 4: run the init script (depending on windows or unix)
+
+_Maximilian Gram: 14.07.2025_

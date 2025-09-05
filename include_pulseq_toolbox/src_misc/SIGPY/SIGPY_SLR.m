@@ -54,14 +54,14 @@ if sigpy_exist==0
 
     % read sigpy environment and python specs 
     if ispc()
-        temp_py_file = which('SIGPY_SLR');
-        temp_py_file = [temp_py_file(1:end-11) 'py_cmd_windows.txt'];
+        temp_py_file = which('init_SIGPY_windows_unix');
+        temp_py_file = [temp_py_file(1:end-25) 'py_cmd_windows.txt'];
         temp_py_file = fopen(temp_py_file);
         temp_cmd     = fgetl(temp_py_file);
         fclose(temp_py_file);
     elseif isunix()
-        temp_py_file = which('SIGPY_SLR');
-        temp_py_file = [temp_py_file(1:end-11) 'py_cmd_unix.txt'];
+        temp_py_file = which('init_SIGPY_windows_unix');
+        temp_py_file = [temp_py_file(1:end-25) 'py_cmd_unix.txt'];
         temp_py_file = fopen(temp_py_file);
         temp_cmd     = fgetl(temp_py_file);
         fclose(temp_py_file);

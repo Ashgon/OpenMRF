@@ -1,4 +1,4 @@
-# Contents: /src_user_definitions
+# Contents: /user_definitions
 
 This folder contains user-specific configuration data in `.csv` format. The file is automatically created during the first initialization of the repository in MATLAB.
 

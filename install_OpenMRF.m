@@ -10,6 +10,9 @@ disp('     ... original pulseq repository included!');
 addpath(genpath('include_pulseq_toolbox'));
 disp('     ... pulseq toolbox functions included!');
 
+addpath(genpath('user_specifications'));
+disp('     ... pulseq user specifications included!');
+
 addpath(genpath('include_pre_sim_library'));
 disp('     ... pre-sim library included!');
 
