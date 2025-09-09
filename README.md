@@ -10,7 +10,7 @@ OpenMRF is a modular and vendor-neutral framework for Magnetic Resonance Fingerp
 
 - `include_miitt/`: Contains the low-rank reconstruction code provided by the MIITT group and Jeffrey Fessler's [MIRT toolbox](https://web.eecs.umich.edu/~fessler/code/). Includes an installation script. **Do not** add this folder manually to your MATLAB path; use the `install_OpenMRF.m` script.
 - `include_misc/`: Miscellaneous utilities and helper functions.
-- `include_pre_sim_library/`: Library of optimized RF pulse waveforms (including `sigpy`-generated pulses) and flip angle patterns for MRF. Also used to store pre-simulated slice profiles, adiabatic efficiencies and compressed dictionaries.
+- `include_pre_sim_library/`: Library of SLR optimized RF pulse waveforms (including `sigpy`-generated pulses) and flip angle patterns for MRF. Also used to store pre-simulated slice profiles, adiabatic efficiencies and compressed dictionaries.
 - `include_pulseq_original/`: Copy of the official Pulseq repo ([GitHub link](https://github.com/pulseq/pulseq), v1.5, 01.04.2025). Includes minor modifications to the plotting functions for visualizing trigger inputs/outputs.
 - `include_pulseq_toolbox/`: Contains standard imaging readouts (cartesian, radial, spiral, rosette) combined with various preparation modules (inversion recovery, saturation, MLEV-T2, spin-lock, adiabatic spin-lock, CEST). Also includes simulation tools for MRF dictionary generation.
 - `main_sequences/`: Example Pulseq sequences and reconstruction scripts.

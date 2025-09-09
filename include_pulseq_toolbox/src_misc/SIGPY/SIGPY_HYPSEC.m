@@ -8,89 +8,18 @@ function [rf] = SIGPY_HYPSEC(beta, mu, pulse_duration, phase_offset, sys)
 
 n = round(pulse_duration/sys.rfRasterTime);
 
-%% search for sigpy pulse files
-sigpy_id = [ 'sigpy_hypsec_' ...
-             num2str(pulse_duration*1e3, '%.2f') 'ms_' ...
-             num2str(n) 'points_' ...
-             num2str(beta, '%.2f') 'beta_' ...
-             num2str(mu, '%.2f') 'mu'];
-
-sigpy_id    = [strrep(sigpy_id, '.', ',') '.mat'];
-sigpy_path  = pulseq_get_path('SIGPY_find_waveforms');
-sigpy_path  = [sigpy_path sigpy_id];
-sigpy_exist = isfile(sigpy_path);
-
-if sigpy_exist==1
-    load(sigpy_path);
-end
-
 %% calculate sigpy pulse shape
 
-if sigpy_exist==0
-    
-    % read sigpy environment and python specs 
-    if ispc()
-        temp_py_file = which('init_SIGPY_windows_unix');
-        temp_py_file = [temp_py_file(1:end-25) 'py_cmd_windows.txt'];
-        temp_py_file = fopen(temp_py_file);
-        temp_cmd     = fgetl(temp_py_file);
-        fclose(temp_py_file);
-    elseif isunix()
-        temp_py_file = which('init_SIGPY_windows_unix');
-        temp_py_file = [temp_py_file(1:end-25) 'py_cmd_unix.txt'];
-        temp_py_file = fopen(temp_py_file);
-        temp_cmd     = fgetl(temp_py_file);
-        fclose(temp_py_file);
-    else
-        error('I hate fruits...')
-    end
+[signal_am, signal_fm] = hypsec_clone(n, beta, mu, pulse_duration);
+signal_am = signal_am / max(signal_am) * beta; 
 
-    % commands for HYPSEC pulse
-    cmd1 = [ temp_cmd ...
-             '-c "import sigpy.mri.rf; ' ...
-             'mypulse = sigpy.mri.rf.adiabatic.hypsec( ' ...
-             num2str(n) ', ' ... 
-             num2str(beta) ', ' ...
-             num2str(mu) ', ' ...
-             num2str(pulse_duration) ...
-             ' ); print(*mypulse[0]);"' ];
-    cmd2 = [ temp_cmd ...
-             '-c "import sigpy.mri.rf; ' ...
-             'mypulse = sigpy.mri.rf.adiabatic.hypsec( ' ...
-             num2str(n) ', ' ... 
-             num2str(beta) ', ' ...
-             num2str(mu) ', ' ...
-             num2str(pulse_duration) ...
-             ' ); print(*mypulse[1]);"' ];
+% calculate phase modulation
+signal_phase = cumsum(signal_fm) * sys.rfRasterTime;
 
-    % execute command in terminal
-    [status, result1] = system(cmd1);
-    if status~=0
-        error('executing python command failed');
-    end
-    [status, result2] = system(cmd2);
-    if status~=0
-        error('executing python command failed');
-    end
+% calculate complex pulse shape
+signal = signal_am .* exp(1i* signal_phase);
+       
 
-    % read pulse shape: ampitude modulation
-    lines     = regexp(result1,'\n','split'); 
-    signal_am = str2num(lines{1}); % [0...1]
-    signal_am = signal_am / max(signal_am) * beta;    
-    % read pulse shape: offresonance modulation
-    lines     = regexp(result2,'\n','split'); 
-    signal_fm = str2num(lines{1}); % [rad/s]
-    
-    % calculate phase modulation
-    signal_phase = cumsum(signal_fm) * sys.rfRasterTime;
-    
-    % calculate complex pulse shape
-    signal = signal_am .* exp(1i* signal_phase);
-    
-    % save sigpy file
-    save(sigpy_path, 'signal');    
-
-end
 
 %% create sigpy pulse object
 
@@ -109,3 +38,29 @@ rf.phaseOffset = phase_offset;
 
 end
 
+%% clone of the python based SIGPY hypsech function
+function [a, om] = hypsec_clone(n, beta, mu, dur)
+% Design a hyperbolic secant adiabatic pulse.
+%
+% mu * beta becomes the amplitude of the frequency sweep
+%
+% Args:
+%     n (int): number of samples (should be a multiple of 4).
+%     beta (float): AM waveform parameter.
+%     mu (float): a constant, determines amplitude of frequency sweep.
+%     dur (float): pulse time (s).
+%
+% Returns:
+%     2-element tuple containing
+%      - a (array): AM waveform.
+%      - om (array): FM waveform (radians/s).
+%
+% References:
+%     Baum, J., Tycko, R. and Pines, A. (1985). 'Broadband and adiabatic
+%     inversion of a two-level system by phase-modulated pulses'.
+%     Phys. Rev. A., 32:3435-3447.
+
+t = ((-n/2):(n/2-1)).' / n * dur;
+a = (cosh(beta * t)).^(-1);
+om = -mu * beta * tanh(beta * t);
+end

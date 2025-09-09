@@ -12,100 +12,21 @@ function [rf] = SIGPY_BIR4(beta, kappa, dw0, f1, alpha, dphi, pulse_duration, ph
 
 n = round(pulse_duration/sys.rfRasterTime);
 
-%% search for sigpy pulse files
-sigpy_id = [ 'sigpy_bir4_' ...
-             num2str(pulse_duration*1e3, '%.2f') 'ms_' ...
-             num2str(n) 'points_' ...
-             num2str(alpha*180/pi, '%.1f') 'deg_' ...
-             mod '_' ...
-             num2str(beta, '%.1f') 'beta_' ...
-             num2str(kappa, '%.5f') 'kappa_' ...
-             num2str(dw0, '%.1f') 'dw0_' ...
-             num2str(f1, '%.1f') 'f1_' ...
-             num2str(dphi, '%.3f') 'dphi' ];
-
-sigpy_id    = [strrep(sigpy_id, '.', ',') '.mat'];
-sigpy_path  = pulseq_get_path('SIGPY_find_waveforms');
-sigpy_path  = [sigpy_path sigpy_id];
-sigpy_exist = isfile(sigpy_path);
-
-if sigpy_exist==1
-    load(sigpy_path);
-end
-
 %% calculate sigpy pulse shape
-if sigpy_exist==0
 
-    % read sigpy environment and python specs 
-    if ispc()
-        temp_py_file = which('init_SIGPY_windows_unix');
-        temp_py_file = [temp_py_file(1:end-25) 'py_cmd_windows.txt'];
-        temp_py_file = fopen(temp_py_file);
-        temp_cmd     = fgetl(temp_py_file);
-        fclose(temp_py_file);
-    elseif isunix()
-        temp_py_file = which('init_SIGPY_windows_unix');
-        temp_py_file = [temp_py_file(1:end-25) 'py_cmd_unix.txt'];
-        temp_py_file = fopen(temp_py_file);
-        temp_cmd     = fgetl(temp_py_file);
-        fclose(temp_py_file);
-    else
-        error('I hate fruits...')
-    end
+[signal_am, signal_fm] = bir4_clone(n, beta, kappa, alpha, dw0);
+signal_am = signal_am / max(signal_am) * f1;
 
-    % command for BIR4 pulse
-    cmd1 = [ temp_cmd ...
-             '-c "import sigpy.mri.rf; ' ...
-             'mypulse = sigpy.mri.rf.adiabatic.bir4( ' ...
-             num2str(n) ', ' ... 
-             num2str(beta) ', ' ...
-             num2str(kappa) ', ' ...
-             num2str(alpha) ', ' ...
-             num2str(dw0) ', ' ...
-             ' ); print(*mypulse[0]);"' ];
-    cmd2 = [ temp_cmd ...
-             '-c "import sigpy.mri.rf; ' ...
-             'mypulse = sigpy.mri.rf.adiabatic.bir4( ' ...
-             num2str(n) ', ' ... 
-             num2str(beta) ', ' ...
-             num2str(kappa) ', ' ...
-             num2str(alpha) ', ' ...
-             num2str(dw0) ', ' ...
-             ' ); print(*mypulse[1]);"' ];    
-    
-    % execute command in terminal
-    [status, result1] = system(cmd1);
-    if status~=0
-        error('executing python command failed');
-    end
-    [status, result2] = system(cmd2);
-    if status~=0
-        error('executing python command failed');
-    end
+% calculate phase modulation
+signal_phase = cumsum(signal_fm) * sys.rfRasterTime;
 
-    % read pulse shape: ampitude modulation
-    lines     = regexp(result1,'\n','split'); 
-    signal_am = str2num(lines{1}); % [0...1]
-    signal_am = signal_am / max(signal_am) * f1;    
-    % read pulse shape: offresonance modulation
-    lines     = regexp(result2,'\n','split'); 
-    signal_fm = str2num(lines{1}); % [rad/s]
-    
-    % calculate phase modulation
-    signal_phase = cumsum(signal_fm) * sys.rfRasterTime;
-
-    % calculate complex pulse shape
-    if strcmp(mod, 'tipdown')
-        signal = signal_am .* exp(1i* (signal_phase + dphi - pi/2));
-    elseif strcmp(mod, 'tipup')
-        signal = signal_am .* exp(1i* (signal_phase + dphi + pi/2));
-    else
-        error('wrong mode: tipdown or tipup')
-    end
-
-    % save sigpy file
-    save(sigpy_path, 'signal');
-
+% calculate complex pulse shape
+if strcmp(mod, 'tipdown')
+    signal = signal_am .* exp(1i* (signal_phase + dphi - pi/2));
+elseif strcmp(mod, 'tipup')
+    signal = signal_am .* exp(1i* (signal_phase + dphi + pi/2));
+else
+    error('wrong mode: tipdown or tipup')
 end
 
 %% create sigpy pulse object
@@ -125,3 +46,46 @@ rf.phaseOffset = phase_offset;
 
 end
 
+%% clone of the python based SIGPY bir4 function
+function [a, om] = bir4_clone(n, beta, kappa, theta, dw0)
+% Design a BIR-4 adiabatic pulse.
+%
+% BIR-4 is equivalent to two BIR-1 pulses back-to-back.
+%
+% Args:
+%     n (int): number of samples (should be a multiple of 4).
+%     beta (float): AM waveform parameter.
+%     kappa (float): FM waveform parameter.
+%     theta (float): flip angle in radians.
+%     dw0: FM waveform scaling (radians/s).
+%
+% Returns:
+%     2-element tuple containing
+%      - a (array): AM waveform.
+%      - om (array): FM waveform (radians/s).
+%
+% References:
+%     Staewen, R.S. et al. (1990). '3-D FLASH Imaging using a single surface
+%     coil and a new adiabatic pulse, BIR-4'.
+%     Invest. Radiology, 25:559-567.
+
+dphi = pi + theta / 2;
+t = (0:n-1).' / n;
+
+q = n/4;
+a1 = tanh(beta * (1 - 4 * t(1:q)));
+a2 = tanh(beta * (4 * t(q+1:2*q) - 1));
+a3 = tanh(beta * (3 - 4 * t(2*q+1:3*q)));
+a4 = tanh(beta * (4 * t(3*q+1:n) - 3));
+
+a = [a1; a2; a3; a4];
+a = complex(a, 0);
+a(q+1:3*q) = a(q+1:3*q) .* exp(1i * dphi);
+
+om1 = dw0 * tan(kappa * 4 * t(1:q)) / tan(kappa);
+om2 = dw0 * tan(kappa * (4 * t(q+1:2*q) - 2)) / tan(kappa);
+om3 = dw0 * tan(kappa * (4 * t(2*q+1:3*q) - 2)) / tan(kappa);
+om4 = dw0 * tan(kappa * (4 * t(3*q+1:n) - 4)) / tan(kappa);
+
+om = [om1; om2; om3; om4];
+end

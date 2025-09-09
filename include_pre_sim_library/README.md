@@ -14,7 +14,7 @@ This folder contains RF pulse data for simulation and sequence generation.
   Simulated compressed dictionaries
 
 - **sigpy_waveforms/**  
-  SLR and adiabatic pulses (BIR4, HYPSECH) generated using `sigpy`
+  RF pulses using the SLR algorithm generated using `sigpy`
 
 - **slice_profiles/**  
   Slice profile simulations used for Bloch-based MRF dictionary generation
