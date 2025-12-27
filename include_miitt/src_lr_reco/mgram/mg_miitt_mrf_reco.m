@@ -66,43 +66,91 @@ end
 ktraj = ktraj/Nxy;        % scale trajectory: -0.5 ... +0.5
 dcf   = dcf/max(dcf(:));  % scale DCF: 0 ... 1
 
-% reconstruct a combined image for each coil from all TRs
-ktot = zeros(NRead,NSpirals,NCoils,'single');
-for j=1:NR
-    ktot(:,phi_id(j),:) = squeeze(ktot(:,phi_id(j),:)) + DATA(:,:,j);
-end
-ktot         = ktot.*repmat(sqrt(dcf_all/max(dcf_all(:))),[1 1 NCoils]);
-FT           = NUFFT(kx/Nxy+1i*ky/Nxy,dcf_all/max(dcf_all(:)),[0 0],[Nxy*params_reco.readOS Nxy*params_reco.readOS]);
-images.coils = FT'*ktot;
-clear ktot FT;
-
 %% ROVIR Outer FOV Artifact Suppression
 if params_reco.ROVIR
     % See paper by Dauen Kim, "Region-optimized virtual (ROVir) coils", MRM 2021.
-    % Here we use ROVIR to suppress signals from the oversampled region of
-    % the FOV (outside the 1x FOV).
-    % I've found that it's better to use ROVIR to throw away 25% of coils,
-    % and then use SVD to bring the count down to 8, rather than simply using ROVIR to compress to 8 coils.
 
-    % Define ROI for signal within 1x FOV
-    roiSignal = zeros(Nxy*params_reco.readOS,Nxy*params_reco.readOS);
-    roiSignal(Nxy*params_reco.readOS/2-Nxy/2+1:Nxy*params_reco.readOS/2+Nxy/2,Nxy*params_reco.readOS/2-Nxy/2+1:Nxy*params_reco.readOS/2+Nxy/2) = 1;
+    % reconstruct a combined image for each coil from all TRs before ROVir
+    ktot = zeros(NRead, NSpirals, NCoils, 'single');
+    for j=1:NR
+        ktot(:,phi_id(j),:) = squeeze(ktot(:,phi_id(j),:)) + DATA(:,:,j);
+    end
+    ktot         = ktot.*repmat(sqrt(dcf_all/max(dcf_all(:))),[1 1 NCoils]);
+    FT           = NUFFT(kx/Nxy+1i*ky/Nxy,dcf_all/max(dcf_all(:)),[0 0],[Nxy*params_reco.readOS Nxy*params_reco.readOS]);
+    images_rovir = FT'*ktot;
+    temp_before  = abs(openadapt(permute(images_rovir, [3,1,2])));
+    clear ktot FT;
 
-    % Define ROI for signal within outer 75% (25% transition band)
-    buffer = ceil(round(Nxy*1.25)/2)*2;
-    % buffer = ceil(round(N*1.1)/2)*2;
-    % buffer = ceil(round(N*1.05)/2)*2;
-    roiInterf = zeros(Nxy*params_reco.readOS,Nxy*params_reco.readOS);
-    roiInterf(Nxy*params_reco.readOS/2-buffer/2:Nxy*params_reco.readOS/2+buffer/2-1,Nxy*params_reco.readOS/2-buffer/2:Nxy*params_reco.readOS/2+buffer/2-1) = 1;
-    roiInterf = 1 - roiInterf;
+    if ~isfield(params_reco, 'rovir_mode')
+        params_reco.rovir_mode = 'auto';
+    end
+    if strcmp(params_reco.rovir_mode, 'auto')
+        % Here we use ROVIR to suppress signals from the oversampled region of the FOV (outside the 1x FOV)
+        % Define ROI for signal within 1x FOV
+        roiSignal = zeros(Nxy*params_reco.readOS, Nxy*params_reco.readOS);
+        roiSignal(Nxy*params_reco.readOS/2 - Nxy/2+1 : Nxy*params_reco.readOS/2 + Nxy/2, ...
+                  Nxy*params_reco.readOS/2 - Nxy/2+1 : Nxy*params_reco.readOS/2 + Nxy/2) = 1;
+        % Define ROI for signal within outer 75% (25% transition band)
+        buffer    = ceil(round(Nxy*1.25)/2)*2;
+        roiInterf = zeros(Nxy*params_reco.readOS, Nxy*params_reco.readOS);
+        roiInterf(Nxy*params_reco.readOS/2 - buffer/2 : Nxy*params_reco.readOS/2 + buffer/2-1, ...
+                  Nxy*params_reco.readOS/2 - buffer/2 : Nxy*params_reco.readOS/2 + buffer/2-1) = 1;
+        roiInterf = 1 - roiInterf;
+        clear buffer;
+    end
+    if strcmp(params_reco.rovir_mode, 'manual')
+        if ~isfield(params_reco, 'rovir_roiSignal') || ~isfield(params_reco, 'rovir_roiInterf')
+            figure(679);
+            hIm = imagesc(temp_before); axis image; axis off; colormap gray;
+            title('Draw/adjust ellipse, then click Accept ROI');
+            h   = drawellipse(gca);
+            btn = uicontrol('Style', 'pushbutton', 'String', 'Accept ROI', ...
+                            'Position', [20 20 100 30], ...
+                            'Callback', @(src,evt) uiresume(gcbf));
+                            uiwait(gcf);
+                            drawnow;
+            roiSignal = createMask(h, hIm) + 0;                
+            buffer    = round(0.1 * size(images_rovir,1));
+            roiInterf = (bwdist(roiSignal) > buffer) + 0;
+            clear hIm h btn buffer;
+            close(679);
+        else
+            roiSignal = params_reco.rovir_roiSignal;
+            roiInterf = params_reco.rovir_roiInterf;
+        end
+    end
 
-    % Let's throw away 25% of the coils (you may need to adjust this
-    % based on your dataset!!)
-    % DATA = ROVIR(DATA, image_coil, N, 2, round(0.75 * numCoils), 'numCoils', 'manual', true, roiSignal, roiInterf);
-    % DATA = ROVIR(DATA, image_coil, N, 2, num_virtual_coils, 'numCoils', 'manual', true, roiSignal, roiInterf);
-    DATA = ROVIR(DATA, images.coils, Nxy, 2, params_reco.rovir_thresh, 'auto-thresh','manual',true,roiSignal,roiInterf);
+    % start ROVIR coil beamforming
+    DATA   = ROVIR(DATA, images_rovir, params_reco.rovir_thresh, 'auto-thresh', true, roiSignal, roiInterf);
     NCoils = size(DATA, 2);
-    clear roiSignal buffer roiInterf;
+    
+    % reconstruct a combined image for each coil from all TRs after ROVir    
+    ktot   = zeros(NRead, NSpirals, NCoils, 'single');
+    for j=1:NR
+        ktot(:,phi_id(j),:) = squeeze(ktot(:,phi_id(j),:)) + DATA(:,:,j);
+    end
+    ktot         = ktot.*repmat(sqrt(dcf_all/max(dcf_all(:))),[1 1 NCoils]);
+    FT           = NUFFT(kx/Nxy+1i*ky/Nxy,dcf_all/max(dcf_all(:)),[0 0],[Nxy*params_reco.readOS Nxy*params_reco.readOS]);
+    images_rovir = FT'*ktot;
+    temp_after   = abs(openadapt(permute(images_rovir, [3,1,2])));
+    clear ktot FT;
+
+    % show ROIs before/after ROVir
+    figure()
+    subplot(2,2,1)
+    imagesc(roiSignal .* temp_before, [0 max(temp_before(roiSignal==1))]); axis image; axis off; colormap(gray(1000)); colorbar;
+    title('ROI Signal before ROVir')
+    subplot(2,2,2)
+    imagesc(roiInterf .* temp_before, [0 max(temp_before(roiInterf==1))]); axis image; axis off; colormap(gray(1000)); colorbar;
+    title('ROI Interference before ROVir')
+    subplot(2,2,3)
+    imagesc(roiSignal .* temp_after, [0 max(temp_after(roiSignal==1))]); axis image; axis off; colormap(gray(1000)); colorbar;
+    title('ROI Signal after ROVir')
+    subplot(2,2,4)
+    imagesc(roiInterf .* temp_after, [0 max(temp_after(roiInterf==1))]); axis image; axis off; colormap(gray(1000)); colorbar;
+    title('ROI Interference after ROVir') 
+    clear roiSignal roiInterf images_rovir temp_before temp_after;
+
 end
 
 %% SVD Coil Compression
@@ -140,7 +188,7 @@ else
     dict_comp = dict;
     if params_reco.DirectMatching
         params_reco.DirectMatching = false;
-        warning('direction matching disabled! not possible with compressed dictionary');
+        warning('direct matching disabled! not possible with compressed dictionary');
     end
 end
 
