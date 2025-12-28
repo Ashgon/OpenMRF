@@ -43,6 +43,34 @@ if ~isfield(params_reco, 'zero_params')
     params_reco.zero_params.on_off = false;
 end
 
+%% SVD Dictionary Compression
+if ~isstruct(dict)
+    % See IEEE TMI paper by Debra McGivney
+    [~, S ,V] = svd(dict.', 'econ');
+    if ~isfield(params_reco, 'NPCs')
+        svals = diag(S)/S(1);
+        svals = cumsum(svals.^2./sum(svals.^2));
+        NPCs  = find(svals > 0.9999, 1, 'first');
+    else
+        NPCs  = params_reco.NPCs;
+    end
+    dict_phi       = single(V(:,1:NPCs));
+    dict_svd       = (dict.'*dict_phi).';
+    dict_comp.phi  = dict_phi;
+    dict_comp.svd  = dict_svd;
+    dict_comp.NPCs = NPCs; 
+    clear S V svals;    
+else
+    dict_phi  = dict.phi;
+    dict_svd  = dict.svd;
+    NPCs      = dict.NPCs;
+    dict_comp = dict;
+    if params_reco.DirectMatching
+        params_reco.DirectMatching = false;
+        warning('direct matching disabled! not possible with compressed dictionary');
+    end
+end
+
 %% Set up the NUFFT for gridding
 
 % calculate global density compensation function
@@ -66,20 +94,29 @@ end
 ktraj = ktraj/Nxy;        % scale trajectory: -0.5 ... +0.5
 dcf   = dcf/max(dcf(:));  % scale DCF: 0 ... 1
 
+% built NUFFT operator
+FT = NUFFT( kx/Nxy + 1i*ky/Nxy, ...
+            dcf_all / max(dcf_all(:)), ...
+            [0 0], ...
+            [Nxy*params_reco.readOS Nxy*params_reco.readOS]);
+
 %% ROVIR Outer FOV Artifact Suppression
 if params_reco.ROVIR
     % See paper by Dauen Kim, "Region-optimized virtual (ROVir) coils", MRM 2021.
 
-    % reconstruct a combined image for each coil from all TRs before ROVir
-    ktot = zeros(NRead, NSpirals, NCoils, 'single');
-    for j=1:NR
-        ktot(:,phi_id(j),:) = squeeze(ktot(:,phi_id(j),:)) + DATA(:,:,j);
+    % reco of 1st PC image before ROVir
+    ksvd       = complex(zeros(NRead * NSpirals, NR, 'single'));
+    images_pc1 = complex(zeros(Nxy * params_reco.readOS, Nxy * params_reco.readOS, NCoils, 'single'));
+    for j = 1:NCoils
+        for k=1:NR
+            ksvd(NRead*(phi_id(k)-1) + 1:NRead*phi_id(k),k) = DATA(:,j,k);
+        end
+        kcomp      = reshape(ksvd*dict_phi, [NRead NSpirals NPCs]);
+        image_temp = FT' * (kcomp(:,:,1) .* sqrt(dcf_all));
+        images_pc1(:,:,j) = image_temp(:,:,1);
     end
-    ktot         = ktot.*repmat(sqrt(dcf_all/max(dcf_all(:))),[1 1 NCoils]);
-    FT           = NUFFT(kx/Nxy+1i*ky/Nxy,dcf_all/max(dcf_all(:)),[0 0],[Nxy*params_reco.readOS Nxy*params_reco.readOS]);
-    images_rovir = FT'*ktot;
-    temp_before  = abs(openadapt(permute(images_rovir, [3,1,2])));
-    clear ktot FT;
+    temp_before = abs(openadapt(permute(images_pc1, [3,1,2])));
+    clear ksvd image_temp kcomp;
 
     if ~isfield(params_reco, 'rovir_mode')
         params_reco.rovir_mode = 'auto';
@@ -110,7 +147,7 @@ if params_reco.ROVIR
                             uiwait(gcf);
                             drawnow;
             roiSignal = createMask(h, hIm) + 0;                
-            buffer    = round(0.1 * size(images_rovir,1));
+            buffer    = round(0.1 * size(images_pc1,1));
             roiInterf = (bwdist(roiSignal) > buffer) + 0;
             clear hIm h btn buffer;
             close(679);
@@ -120,20 +157,23 @@ if params_reco.ROVIR
         end
     end
 
-    % start ROVIR coil beamforming
-    DATA   = ROVIR(DATA, images_rovir, params_reco.rovir_thresh, 'auto-thresh', true, roiSignal, roiInterf);
+    % start ROVir coil beamforming
+    DATA   = ROVIR(DATA, images_pc1, params_reco.rovir_thresh, 'auto-thresh', true, roiSignal, roiInterf);
     NCoils = size(DATA, 2);
     
-    % reconstruct a combined image for each coil from all TRs after ROVir    
-    ktot   = zeros(NRead, NSpirals, NCoils, 'single');
-    for j=1:NR
-        ktot(:,phi_id(j),:) = squeeze(ktot(:,phi_id(j),:)) + DATA(:,:,j);
+    % reco of 1st PC image after ROVir
+    ksvd       = complex(zeros(NRead * NSpirals, NR, 'single'));
+    images_pc1 = complex(zeros(Nxy * params_reco.readOS, Nxy * params_reco.readOS, NCoils, 'single'));
+    for j = 1:NCoils
+        for k=1:NR
+            ksvd(NRead*(phi_id(k)-1) + 1:NRead*phi_id(k),k) = DATA(:,j,k);
+        end
+        kcomp      = reshape(ksvd*dict_phi, [NRead NSpirals NPCs]);
+        image_temp = FT' * (kcomp(:,:,1) .* sqrt(dcf_all));
+        images_pc1(:,:,j) = image_temp(:,:,1);
     end
-    ktot         = ktot.*repmat(sqrt(dcf_all/max(dcf_all(:))),[1 1 NCoils]);
-    FT           = NUFFT(kx/Nxy+1i*ky/Nxy,dcf_all/max(dcf_all(:)),[0 0],[Nxy*params_reco.readOS Nxy*params_reco.readOS]);
-    images_rovir = FT'*ktot;
-    temp_after   = abs(openadapt(permute(images_rovir, [3,1,2])));
-    clear ktot FT;
+    temp_after = abs(openadapt(permute(images_pc1, [3,1,2])));
+    clear ksvd image_temp kcomp;
 
     % show ROIs before/after ROVir
     figure()
@@ -149,7 +189,7 @@ if params_reco.ROVIR
     subplot(2,2,4)
     imagesc(roiInterf .* temp_after, [0 max(temp_after(roiInterf==1))]); axis image; axis off; colormap(gray(1000)); colorbar;
     title('ROI Interference after ROVir') 
-    clear roiSignal roiInterf images_rovir temp_before temp_after;
+    clear roiSignal roiInterf images_pc1 temp_before temp_after;
 
 end
 
@@ -160,59 +200,28 @@ if params_reco.CoilComp
     DATA     = reshape(permute(DATA, [1,3,2]), [NRead*NR NCoils]) * v_coils(:,1:no_coils);
     DATA     = permute(reshape(DATA, [NRead, NR, no_coils]), [1 3 2]);
     DATA     = single(DATA);
+    disp(['SVD: keep ' num2str(no_coils) ' of ' num2str(NCoils) ' coils' ]);
     NCoils   = no_coils;
     clear no_coils v_coils;
 end
 
-%% SVD Dictionary Compression
-if ~isstruct(dict)
-    % See IEEE TMI paper by Debra McGivney
-    [~, S ,V] = svd(dict.', 'econ');
-    if ~isfield(params_reco, 'NPCs')
-        svals = diag(S)/S(1);
-        svals = cumsum(svals.^2./sum(svals.^2));
-        NPCs  = find(svals > 0.9999, 1, 'first');
-    else
-        NPCs  = params_reco.NPCs;
-    end
-    dict_phi       = single(V(:,1:NPCs));
-    dict_svd       = (dict.'*dict_phi).';
-    dict_comp.phi  = dict_phi;
-    dict_comp.svd  = dict_svd;
-    dict_comp.NPCs = NPCs; 
-    clear S V svals;    
-else
-    dict_phi  = dict.phi;
-    dict_svd  = dict.svd;
-    NPCs      = dict.NPCs;
-    dict_comp = dict;
-    if params_reco.DirectMatching
-        params_reco.DirectMatching = false;
-        warning('direct matching disabled! not possible with compressed dictionary');
-    end
-end
-
 %% Estimate coil sensitivity maps
 
-FT = NUFFT( kx/Nxy + 1i*ky/Nxy, ...
-            dcf_all/max(dcf_all(:)), ...
-            [0 0], ...
-            [Nxy*params_reco.readOS Nxy*params_reco.readOS]);
-
-% Estimate coil sensitivity maps from the 1st singular value MRF image.
-ksvd       = complex(zeros(NRead*NSpirals,NR,'single'));
-images.pc1 = complex(zeros(Nxy*params_reco.readOS,Nxy*params_reco.readOS,NCoils,'single'));
-
+% reco of 1st PC image
+ksvd       = complex(zeros(NRead * NSpirals, NR, 'single'));
+images_pc1 = complex(zeros(Nxy * params_reco.readOS, Nxy * params_reco.readOS, NCoils, 'single'));
 for j = 1:NCoils
     for k=1:NR
-        ksvd(NRead*(phi_id(k)-1)+1:NRead*phi_id(k),k) = DATA(:,j,k);
+        ksvd(NRead*(phi_id(k)-1) + 1:NRead*phi_id(k),k) = DATA(:,j,k);
     end
-    kcomp      = reshape(ksvd*dict_phi,[NRead NSpirals NPCs]);
-    image_temp = FT' * (kcomp(:,:,1).*sqrt(dcf_all));
-    images.pc1(:,:,j) = image_temp(:,:,1);
-end 
-clear FT ksvd image_temp kcomp
+    kcomp      = reshape(ksvd*dict_phi, [NRead NSpirals NPCs]);
+    image_temp = FT' * (kcomp(:,:,1) .* sqrt(dcf_all));
+    images_pc1(:,:,j) = image_temp(:,:,1);
+end
+images.pc1 = images_pc1;
+clear ksvd image_temp kcomp images_pc1;
 
+% Estimate coil sensitivity maps from the 1st singular value MRF image
 if params_reco.ESPIRiT
     % espirit coil sensitivities
     nyacs       = 24*params_reco.readOS;
@@ -287,7 +296,6 @@ end
 
 %% Dot product matching using compressed dictionary and subspace images
 if params_reco.DirectMatching_SVD
-    FT         = NUFFT(kx/Nxy+1i*ky/Nxy, dcf_all/max(dcf_all(:)), [0 0], [Nxy*params_reco.readOS Nxy*params_reco.readOS]);  % nufft operator
     images.SVD = lowrankMRF2D_adjoint(DATA, cmaps, phi_id, dict_phi, FT, NSpirals);
     images.SVD = images.SVD(center_pix,center_pix,:);
     if params_reco.zero_params.on_off
@@ -306,9 +314,6 @@ end
 % Gastao Cruz, MRM 2019. "Sparsity and locally low rank regularization for MR fingerprinting".
 % Jesse Hamilton, NMR Biomed 2019. "Simultaneous multislice cardiac magnetic resonance fingerprinting using low rank reconstruction".
 if params_reco.LowRank
-    if ~exist('FT', 'var')
-        FT  = NUFFT(kx/Nxy+1i*ky/Nxy, dcf_all/max(dcf_all(:)), [0 0], [Nxy*params_reco.readOS Nxy*params_reco.readOS]);  % nufft operator
-    end
     Et      = @(x)lowrankMRF2D_adjoint(x, cmaps, phi_id, dict_phi, FT, NSpirals);          % adjoint operator (spiral k-space to image domain)
     E       = @(x)lowrankMRF2D_forward(x, dict_phi, FT, phi_id, cmaps, [NRead NSpirals]);  % forward operator (image domain to spiral k-space)
     y0      = E(Et(DATA));
