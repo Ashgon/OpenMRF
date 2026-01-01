@@ -15,7 +15,7 @@ function save_study_results(study_info, res, default_dir)
         disp('Save canceled by user.');
     else
         fullpath = fullfile(pathname, filename);
-        save(fullpath, 'res');
+        save(fullpath, 'res', '-v7.3');
         fprintf('Saved variables to: %s\n', fullpath);
     end
 end
